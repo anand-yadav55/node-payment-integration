@@ -1,31 +1,102 @@
 import './styles.css';
-function App() {
-  let order = [
-    {
-      qty: 2,
-      name: 'Margarita A',
-      variant: 'crab & cucumber',
-      price: '412.00',
-    },
-    {
-      qty: 1,
-      name: 'Margarita B',
-      variant: 'tuna & cucumber',
-      price: '112.00',
-    },
-    {
-      qty: 3,
-      name: 'Margarita C',
-      variant:
-        'smoked salman over rice with extra sauce to check if this line works',
-      price: '1236.00',
-    },
-  ];
-  let subtotal = 0,
-    discount = 759.5,
-    deliveryFee = 12.0,
-    taxes = 46.15;
+import { order } from './data';
 
+import { useState, useEffect } from 'react';
+import axios from 'axios';
+
+function openModal(msg, orderId, amount) {
+  const modal = document.createElement('div');
+  // modal.appendChild(
+  //   msg ? (
+  //     <div className="message">
+  //       <span className="msg">
+  //         Order has been placed succesfully. Confirmation message has been send!
+  //       </span>
+  //       <div>
+  //         <span>Order Id:</span>
+  //         <span>{orderId}</span>
+  //       </div>
+  //       <div>
+  //         <span>Total:</span>
+  //         <span>₹{amount}</span>
+  //       </div>
+  //     </div>
+  //   ) : (
+  //     <div className="message">
+  //       <span className="msg">Payment Declined. Try again</span>
+  //     </div>
+  //   )
+  // );
+  document.body.appendChild(modal);
+}
+
+function loadScript(src) {
+  return new Promise((resolve) => {
+    const script = document.createElement('script');
+    script.src = src;
+    script.onload = () => {
+      resolve(true);
+    };
+    script.onerror = () => {
+      resolve(false);
+    };
+    document.body.appendChild(script);
+  });
+}
+
+async function getPaymentGateway(amount) {
+  const res = await loadScript('https://checkout.razorpay.com/v1/checkout.js');
+  if (!res) {
+    alert('Unable to connect to payment gateway');
+  }
+  let data = {};
+  axios
+    .post('/razorpay', {
+      amount: Number(amount),
+    })
+    .then((res) => {
+      data = res.data;
+
+      var options = {
+        key: process.env.REACT_APP_KEY_ID,
+        amount: data.amount,
+        currency: data.currency,
+        name: 'Order Payment',
+        order_id: data.id,
+        handler: function (response) {
+          // alert(response.razorpay_payment_id);
+          // alert(response.razorpay_order_id);
+          // alert(response.razorpay_signature);
+          return openModal(
+            response.razorpay_payment_id ? true : false,
+            data.id,
+            data.amount
+          );
+        },
+      };
+
+      var gatewayObject = new window.Razorpay(options);
+      gatewayObject.open();
+    })
+    .catch((err) => console.log(err));
+}
+
+function App() {
+  let [discount, setDiscount] = useState(59.5);
+  let [deliveryFee, setDeliveryFee] = useState(12.0);
+  let [taxes, setTaxes] = useState(46.15);
+  let [subtotal, setSubtotal] = useState(0);
+  let [totalAmount, setTotalAmount] = useState(0);
+
+  useEffect(() => {
+    const localSubtotal = order.reduce(
+      (acc, curr) => (acc += Number(curr.price)),
+      0
+    );
+
+    setSubtotal(localSubtotal);
+    setTotalAmount(localSubtotal - discount + deliveryFee + taxes);
+  }, [discount, deliveryFee, taxes]);
   return (
     <div className="app">
       <div className="container">
@@ -53,7 +124,7 @@ function App() {
             {order.map((item, i) => {
               subtotal += +item.price;
               return (
-                <div className="orderItem">
+                <div className="orderItem" key={i}>
                   <span className="orderItemQuantity">{item.qty}</span>
                   <span className="orderItemName">
                     <span className="orderItemTitle">{item.name}</span>
@@ -85,12 +156,25 @@ function App() {
           </div>
           <div className="total amountBox">
             <span>Total</span>
-            <span>₹ {subtotal - discount + deliveryFee + taxes}</span>
+            <span>₹ {totalAmount}</span>
           </div>
         </div>
       </div>
       <div className="placeOrder">
-        <button>PLACE ORDER</button>
+        <button
+          onClick={(e) => {
+            getPaymentGateway(totalAmount);
+          }}
+        >
+          PLACE ORDER
+        </button>
+      </div>
+      <div
+        onClick={() => {
+          axios.post('/api', { name: 'anand' }).then((res) => console.log(res));
+        }}
+      >
+        adsasadsdsa
       </div>
     </div>
   );

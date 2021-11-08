@@ -8,7 +8,9 @@
   margin: 0;
   box-sizing: border-box;
   font-family: 'Roboto', sans-serif;
+  user-select: none;
 }
+
 .app {
   width: 100%;
   display: flex;
@@ -178,4 +180,12 @@
     width: 100%;
     border-radius: 0;
   }
+}
+.message {
+  width: 400px;
+  min-height: fit-content;
+  height: 30vh;
+  position: fixed;
+  margin: auto;
+  top: 30vh;
 }
